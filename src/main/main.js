@@ -9,7 +9,7 @@ const { createClipboardWatcher } = require('./clipboard-watcher');
 const { createWordSelect } = require('./word-select');
 const { createWordPopup } = require('./word-popup');
 const ocr = require('./ocr');
-const uiaReader = require('./uia-reader');
+const selectionReader = require('./selection-reader');
 const { createTray } = require('./tray');
 
 const isDev = process.argv.includes('--dev');
@@ -56,9 +56,8 @@ if (!gotLock) {
 
     ipc = registerIpc({ state, lineWindow, cursor, wordPopup });
 
-    uiaReader.init(); // 后台预热编译 UIA 助手（一次性）
-
-    // 划词翻译：全局鼠标钩子记录拖选，松开 0.5s 自动触发 → UIA 读选中文本 → 读不到回退 OCR
+    // 划词翻译：全局鼠标钩子记录拖选，松开 0.5s 自动触发
+    // → selection-hook 读选中文本（UIA/Accessibility/剪贴板兜底）→ 读不到回退 OCR
     let wordSeq = 0;
     const wordSelect = createWordSelect({
       isEnabled: () => state.wordSelectEnabled,
@@ -77,13 +76,8 @@ if (!gotLock) {
         const point = { x: (rect.x + rect.w) / sf + 8, y: (rect.y + rect.h) / sf + 8 };
         wordPopup.showAt(point, { phase: 'loading' });
         (async () => {
-          // 策略一：UI Automation 读选中文本（快、准、不耗资源）
-          let text = '';
-          try {
-            text = await uiaReader.readSelectedText();
-          } catch (err) {
-            console.error('UIA 读取失败:', err.message);
-          }
+          // 策略一：selection-hook 读选中文本（内部 UIA → Accessibility → 剪贴板兜底）
+          let text = selectionReader.readSelectedText();
           // 策略二：读不到（图片/视频字幕/自绘界面）回退截图 OCR
           if (!text) {
             try {

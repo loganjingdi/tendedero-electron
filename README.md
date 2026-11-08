@@ -17,7 +17,7 @@ Windows 版「晾衣绳」：截图像衣服一样挂在屏幕顶部的绳子上
 - **托盘**（系统托盘图标）：显示/隐藏、尺寸（小/中/大）、清空、退出
 - **全局快捷键**：`Ctrl+Alt+T` 显示/隐藏
 - **重启恢复**：绳子上的照片和固定状态自动保存
-- **划词翻译**：在屏幕任意位置（浏览器、PDF、图片均可）按住左键划选文字，**右键点击选区**，弹出识别结果与「翻译」「复制文本」菜单（翻译本体待接入）。OCR 本地离线识别（中英混合），托盘可开关
+- **划词翻译**：在屏幕任意位置（浏览器、PDF、图片均可）按住左键划选文字，松开约 0.5 秒后自动弹出识别结果与「翻译」「复制文本」菜单（翻译本体待接入）。取词优先走系统 UI Automation（selection-hook，对可选中文字精准到字符，内部带 Accessibility / 剪贴板兜底）；读不到（图片、视频字幕、自绘界面）才回退本地 OCR（tesseract.js，中英混合）。托盘可开关
 
 ## 运行
 
@@ -51,7 +51,8 @@ src/
 │   ├── cursor.js              光标轮询与揭示/收起状态机
 │   ├── state.js               照片状态、哈希去重、JSON 持久化
 │   ├── clipboard-watcher.js   剪贴板轮询（唯一截图来源）
-│   ├── word-select.js         划词翻译：uiohook 全局鼠标钩子记录拖选 + 右键触发
+│   ├── word-select.js         划词翻译：uiohook 全局鼠标钩子记录拖选，松开自动触发
+│   ├── selection-reader.js    划词取词：selection-hook（UIA/Accessibility/剪贴板兜底）
 │   ├── ocr.js                 选区截图（desktopCapturer+crop）+ tesseract.js 离线识别
 │   ├── word-popup.js          取词结果弹窗（识别中/文字/翻译占位/复制）
 │   ├── ipc.js                 全部 IPC 处理器
