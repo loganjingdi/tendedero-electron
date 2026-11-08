@@ -1,0 +1,7 @@
+node_modules/
+dist/
+out/
+*.log
+
+# 调试用的编译产物（源码 uia-dbg.cs 在 resources/ 下，随仓库提交）
+uia-dbg.exe

@@ -1,0 +1,253 @@
+/* 晾衣绳 —— 一条横贯屏幕顶部的线，截图挂上去，像晾衣服一样 */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+/* 整条线：平时藏在上沿之外，揭示时滑下。
+   两个方向的 transition 分开写，得到"弹簧滑出、缓入收起"的手感（对照原版 0.42s spring / 0.22s easeIn） */
+#line {
+  position: absolute;
+  inset: 0;
+  /* 关键：卡片可能比线盒高（竖长截图）。不裁剪的话，收起时卡片的溢出部分
+     会跟着平移进可视区，在屏幕顶边留下一条照片残影 */
+  overflow: hidden;
+  transform: translateY(calc(-100% - 12px));
+  transition: transform 0.22s ease-in;
+}
+
+#line.revealed {
+  transform: translateY(0);
+  transition: transform 0.42s cubic-bezier(0.22, 1.1, 0.36, 1);
+}
+
+#rope {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* 空绳时的提示胶囊 */
+#hint {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(242, 242, 247, 0.92);
+  color: rgba(60, 60, 67, 0.75);
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+#hint.visible {
+  opacity: 1;
+}
+
+#cards {
+  position: absolute;
+  inset: 0;
+}
+
+/* 卡片：随机倾斜挂在绳子上。left/top 的弹性过渡让新照片加入时
+   旧照片平滑让位，而不是瞬间跳变（防止视觉闪动，对照原版的布局 spring） */
+.card {
+  position: absolute;
+  transform: rotate(var(--tilt, 0deg));
+  transform-origin: top center;
+  transition:
+    left 0.55s cubic-bezier(0.34, 1.25, 0.4, 1),
+    top 0.55s cubic-bezier(0.34, 1.25, 0.4, 1);
+  cursor: pointer;
+}
+
+.card .swing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: top center;
+}
+
+/* 到达：从绳子上方掉下来，带一点过冲回摆（backwards 保证延迟期间保持初始帧，
+   不会先露出来再闪一下） */
+.card .swing.arrive {
+  animation: arrive 0.9s cubic-bezier(0.3, 1.25, 0.35, 1) var(--swing-delay, 0s) backwards;
+}
+
+/* 微风：随机轻轻摆一下 */
+.card .swing.breeze {
+  animation: breeze 1.2s ease-in-out;
+}
+
+@keyframes arrive {
+  0% {
+    transform: translateY(-70px) rotate(-6deg);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(4px) rotate(2.5deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(0) rotate(-0.8deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0);
+    opacity: 1;
+  }
+}
+
+@keyframes breeze {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30% {
+    transform: rotate(var(--breeze-amp, 2.5deg));
+  }
+  70% {
+    transform: rotate(calc(var(--breeze-amp, 2.5deg) * -1));
+  }
+}
+
+/* 夹子：银色渐变；固定的用深空灰（对照原版 Clothespin） */
+.clip {
+  position: relative;
+  z-index: 1;
+  width: 9px;
+  height: 26px;
+  margin-bottom: -13px; /* 与相框重叠，绳子从夹子的槽口穿过 */
+  border-radius: 3.5px;
+  background: linear-gradient(90deg, #b3b3b3, #ededed 35%, #d1d1d1 65%, #9e9e9e);
+  box-shadow:
+    0 1.5px 2px rgba(0, 0, 0, 0.3),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+}
+
+.clip::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 8.5px;
+  height: 1.4px;
+  border-radius: 1px;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+.clip.pinned {
+  background: linear-gradient(90deg, #4d4d4d, #787878 35%, #616161 65%, #3d3d3d);
+  box-shadow:
+    0 1.5px 2px rgba(0, 0, 0, 0.35),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.45);
+}
+
+.clip.pinned::after {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+/* 玻璃相框：白框 + 内侧照片 + 顶部高光描边 */
+.frame {
+  position: relative;
+  background: rgba(250, 250, 252, 0.92);
+  border-radius: 16px;
+  padding: 4px;
+  box-shadow:
+    0 5px 10px rgba(0, 0, 0, 0.18),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -0.5px 0 rgba(0, 0, 0, 0.06);
+  transition:
+    transform 0.18s ease-out,
+    box-shadow 0.18s ease-out;
+}
+
+.frame img {
+  display: block;
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+/* 悬停：轻微提起（对照原版 1.035 倍） */
+.card:hover .frame {
+  transform: scale(1.035) translateY(-3px);
+  box-shadow:
+    0 8px 14px rgba(0, 0, 0, 0.26),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+}
+
+/* 角标按钮：悬停时淡入 */
+.corner {
+  position: absolute;
+  top: -7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(245, 245, 249, 0.95);
+  color: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 0.18s,
+    transform 0.18s,
+    background 0.15s;
+  z-index: 2;
+}
+
+.card:hover .corner {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.corner:hover {
+  background: #fff;
+}
+
+.corner.pin {
+  left: -7px;
+}
+
+.corner.remove {
+  right: -7px;
+}
+
+/* 已复制徽标 */
+.badge {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(40, 40, 46, 0.88);
+  color: #fff;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.badge.show {
+  opacity: 1;
+}
